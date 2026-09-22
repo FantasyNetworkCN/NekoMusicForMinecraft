@@ -86,11 +86,10 @@ public final class PlayerHud implements HudElement {
             if (player.hasTrack()) {
                 player.toggle();
             } else {
-                // 真实音源接入前，先播一首占位曲目方便验证界面
-                player.play(Track.DEMO);
+                // 手里没歌就直接把面板叫出来，省得玩家再去想快捷键
+                NekoMusicUi.open();
             }
         }
-        NekoPlayer.getInstance().tick(50L);
     }
 
     @Override
@@ -120,8 +119,10 @@ public final class PlayerHud implements HudElement {
         NekoPlayer player = NekoPlayer.getInstance();
         Track track = player.getTrack();
 
-        // 没歌在放的时候这一行拿来提示怎么打开面板
-        boolean showArtist = !compact && (track == null || track.hasArtist());
+        // 没歌在放的时候这一行拿来提示怎么打开面板；加载 / 报错时也要留出位置
+        boolean showArtist = !compact && (track == null || track.hasArtist()
+                || player.getStatus() == NekoPlayer.Status.LOADING
+                || player.getStatus() == NekoPlayer.Status.ERROR);
         boolean showTimes = !compact;
 
         int textWidth = panelWidth - PADDING * 2 - ACCENT_WIDTH;
@@ -176,6 +177,13 @@ public final class PlayerHud implements HudElement {
     /** 歌曲演唱者；没有歌曲时改成登录状态 / 快捷键提示。 */
     private static String subtitle(Track track) {
         if (track != null) {
+            NekoPlayer player = NekoPlayer.getInstance();
+            if (player.getStatus() == NekoPlayer.Status.LOADING) {
+                return Text.translatable("hud." + Main.MOD_ID + ".loading").getString();
+            }
+            if (player.getStatus() == NekoPlayer.Status.ERROR) {
+                return Text.translatable("hud." + Main.MOD_ID + ".failed").getString();
+            }
             return track.artist();
         }
         AuthManager auth = AuthManager.getInstance();

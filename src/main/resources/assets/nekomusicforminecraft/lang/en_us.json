@@ -7,6 +7,8 @@
   "hud.nekomusicforminecraft.idle": "Nothing playing",
   "hud.nekomusicforminecraft.hint": "Press K to open the music panel",
   "hud.nekomusicforminecraft.logged_in": "Signed in as %s",
+  "hud.nekomusicforminecraft.loading": "Loading...",
+  "hud.nekomusicforminecraft.failed": "Playback failed",
   "command.nekomusicforminecraft.help.header": "NekoMusic commands:",
   "command.nekomusicforminecraft.help.login": "/nekomusic login - open the panel and scan the QR code",
   "command.nekomusicforminecraft.help.logout": "/nekomusic logout - sign out",
@@ -45,6 +47,9 @@
   "screen.nekomusicforminecraft.panel.search.empty": "No result for \"%s\"",
   "screen.nekomusicforminecraft.panel.search.empty_with_message": "No result for \"%s\": %s",
   "screen.nekomusicforminecraft.panel.search.failed": "Search failed: %s",
+  "screen.nekomusicforminecraft.panel.player.tip": "Click a result to play, scroll to set volume",
+  "screen.nekomusicforminecraft.panel.player.failed": "Playback failed: %s",
+  "screen.nekomusicforminecraft.panel.player.volume": "Volume %s%%",
   "screen.nekomusicforminecraft.qr_login.status.idle": "Preparing...",
   "screen.nekomusicforminecraft.qr_login.status.creating": "Requesting QR code...",
   "screen.nekomusicforminecraft.qr_login.status.pending": "Waiting for scan... (expires in %s s)",
@@ -52,5 +57,7 @@
   "screen.nekomusicforminecraft.qr_login.status.confirmed": "Logged in, welcome %s!",
   "screen.nekomusicforminecraft.qr_login.status.canceled": "Login canceled, requesting a new QR code...",
   "screen.nekomusicforminecraft.qr_login.status.expired": "QR code expired, requesting a new one...",
-  "screen.nekomusicforminecraft.qr_login.status.error": "Error: %s"
+  "screen.nekomusicforminecraft.qr_login.status.error": "Error: %s",
+  "player.nekomusicforminecraft.error.device": "Cannot open the audio output device, it may be in use",
+  "player.nekomusicforminecraft.error.format": "Unsupported audio format: %s"
 }

@@ -13,6 +13,8 @@ import xin.neko.fantasynetwork.api.MusicSearch;
 import xin.neko.fantasynetwork.auth.AuthManager;
 import xin.neko.fantasynetwork.auth.NekoUser;
 import xin.neko.fantasynetwork.auth.QrLoginService;
+import xin.neko.fantasynetwork.player.NekoPlayer;
+import xin.neko.fantasynetwork.player.Track;
 import xin.neko.fantasynetwork.util.QrMatrix;
 
 import java.util.List;
@@ -49,6 +51,8 @@ public class NekoMusicScreen extends Screen {
     /** 二维码四周留白的模块数（静默区），扫码器普遍要求至少 4 个。 */
     private static final int QUIET_ZONE = 4;
     private static final long AUTO_REFRESH_DELAY_MS = 1800L;
+    /** 调完音量后把音量数字顶在底部状态行上显示多久。 */
+    private static final long VOLUME_NOTICE_MILLIS = 1200L;
 
     private static final int COLOR_DIM = 0x66000000;
     private static final int COLOR_PANEL_TOP = 0xE81A1A24;
@@ -62,6 +66,8 @@ public class NekoMusicScreen extends Screen {
     private static final int COLOR_SEPARATOR = 0x22FFFFFF;
     private static final int COLOR_ROW_ALT = 0x0CFFFFFF;
     private static final int COLOR_ROW_HOVER = 0x2E9B7BFF;
+    private static final int COLOR_ROW_ACTIVE = 0x3A9B7BFF;
+    private static final int COLOR_BAR_TRACK = 0x40FFFFFF;
     private static final int COLOR_SHADOW = 0x4C000000;
     private static final int COLOR_SHADOW_SOFT = 0x24000000;
     private static final int COLOR_FIELD = 0x59000000;
@@ -106,7 +112,11 @@ public class NekoMusicScreen extends Screen {
     private int resultsY;
     private int resultsWidth;
     private int resultRows;
+    /** 面板底部「正在播放」那一行的顶部，进度线挂在它下面。 */
+    private int stripY;
     private long refreshAtMillis = -1L;
+    /** 刚调过音量时先把音量顶掉一会儿，给个反馈。 */
+    private long volumeNoticeUntilMillis;
 
     public NekoMusicScreen() {
         super(Text.translatable(LANG + "title"));
@@ -199,6 +209,7 @@ public class NekoMusicScreen extends Screen {
             super.render(context, mouseX, mouseY, deltaTicks);
             drawFieldFrame(context);
             drawResults(context, mouseX, mouseY);
+            drawNowPlaying(context);
             drawButton(context, searchButtonX, searchY, SEARCH_BUTTON_WIDTH, BUTTON_HEIGHT,
                     Text.translatable(LANG + "search.button"), true, mouseX, mouseY);
         }
@@ -225,6 +236,13 @@ public class NekoMusicScreen extends Screen {
             search();
             return true;
         }
+        if (showSearch) {
+            int index = resultIndexAt(mouseX, mouseY);
+            if (index >= 0) {
+                play(results.get(index));
+                return true;
+            }
+        }
         // 点到面板外面就当是关掉，符合悬浮窗的习惯；二维码本身在后台照样有效，再按 K 就回来了
         if (!within(mouseX, mouseY, panelX, panelY, panelWidth, panelHeight)) {
             close();
@@ -243,6 +261,22 @@ public class NekoMusicScreen extends Screen {
         context.fill(searchX - 1, searchY, searchX, searchY + BUTTON_HEIGHT, border);
         context.fill(searchX + searchFieldWidth, searchY, searchX + searchFieldWidth + 1, searchY + BUTTON_HEIGHT,
                 border);
+    }
+
+    /** 面板上滚滚轮就是调音量，比再塞一个滑块省地方。 */
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (verticalAmount != 0.0 && within(mouseX, mouseY, panelX, panelY, panelWidth, panelHeight)) {
+            NekoPlayer player = NekoPlayer.getInstance();
+            if (verticalAmount > 0.0) {
+                player.volumeUp();
+            } else {
+                player.volumeDown();
+            }
+            volumeNoticeUntilMillis = System.currentTimeMillis() + VOLUME_NOTICE_MILLIS;
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override
@@ -264,6 +298,7 @@ public class NekoMusicScreen extends Screen {
 
         int contentTop = panelY + PADDING + HEADER_HEIGHT + 8;
         contentBottom = panelY + panelHeight - PADDING;
+        stripY = contentBottom - textRenderer.fontHeight - 2;
         int available = Math.max(40, contentBottom - contentTop);
 
         int qrMaxByWidth = panelWidth - PADDING * 2 - GAP - SEARCH_MIN_WIDTH;
@@ -285,7 +320,8 @@ public class NekoMusicScreen extends Screen {
             resultsX = searchX;
             resultsY = searchY + BUTTON_HEIGHT + 8;
             resultsWidth = rightWidth;
-            resultRows = Math.min(MAX_ROWS, Math.max(0, (contentBottom - resultsY) / ROW_HEIGHT));
+            // 结果列表到状态行上面为止
+            resultRows = Math.min(MAX_ROWS, Math.max(0, (stripY - 5 - resultsY) / ROW_HEIGHT));
         } else {
             searchFieldWidth = 0;
             searchButtonX = 0;
@@ -422,11 +458,17 @@ public class NekoMusicScreen extends Screen {
             return;
         }
 
+        NekoPlayer player = NekoPlayer.getInstance();
+        Track current = player.getTrack();
+
         int rows = Math.min(resultRows, results.size());
         for (int index = 0; index < rows; index++) {
             MusicSearch.Track track = results.get(index);
             int rowY = resultsY + index * ROW_HEIGHT;
-            if (index % 2 == 1) {
+            boolean playing = current != null && current.id() == track.id();
+            if (playing) {
+                context.fill(resultsX, rowY, resultsX + resultsWidth, rowY + ROW_HEIGHT, COLOR_ROW_ACTIVE);
+            } else if (index % 2 == 1) {
                 context.fill(resultsX, rowY, resultsX + resultsWidth, rowY + ROW_HEIGHT, COLOR_ROW_ALT);
             }
             if (within(mouseX, mouseY, resultsX, rowY, resultsWidth, ROW_HEIGHT)) {
@@ -437,15 +479,84 @@ public class NekoMusicScreen extends Screen {
 
             String duration = track.durationLabel();
             int durationWidth = textRenderer.getWidth(duration);
-            String title = "#" + track.id() + "  " + track.title();
+            String marker = playing ? (player.isPlaying() ? "▶ " : "❚❚ ") : "";
+            String title = marker + "#" + track.id() + "  " + track.title();
             context.drawText(textRenderer, textRenderer.trimToWidth(title, resultsWidth - durationWidth - 10),
-                    resultsX + 2, rowY + 2, COLOR_TEXT, false);
+                    resultsX + 2, rowY + 2, playing ? COLOR_ACCENT : COLOR_TEXT, false);
             context.drawText(textRenderer, duration, resultsX + resultsWidth - durationWidth - 2, rowY + 2,
                     COLOR_SUBTITLE, false);
             if (!track.artist().isBlank()) {
                 context.drawText(textRenderer, textRenderer.trimToWidth(track.artist(), resultsWidth - 4),
                         resultsX + 2, rowY + 11, COLOR_SUBTITLE, false);
             }
+        }
+    }
+
+    /** 鼠标落在第几条结果上，没落在结果里就返回 -1。 */
+    private int resultIndexAt(double mouseX, double mouseY) {
+        if (results.isEmpty() || resultRows <= 0
+                || !within(mouseX, mouseY, resultsX, resultsY, resultsWidth, resultRows * ROW_HEIGHT)) {
+            return -1;
+        }
+        int index = (int) ((mouseY - resultsY) / ROW_HEIGHT);
+        return index >= 0 && index < results.size() ? index : -1;
+    }
+
+    /** 点结果就播；点的是正在放的那首就当作暂停 / 继续。 */
+    private void play(MusicSearch.Track result) {
+        NekoPlayer player = NekoPlayer.getInstance();
+        Track current = player.getTrack();
+        if (current != null && current.id() == result.id() && player.isActive()) {
+            player.toggle();
+            return;
+        }
+        volumeNoticeUntilMillis = 0L;
+        player.play(Track.of(result.id(), result.title(), result.artist(), result.durationSeconds()));
+    }
+
+    /** 面板底部那一行：播放进度 / 音量反馈 / 报错，用不上时给一句操作提示。 */
+    private void drawNowPlaying(DrawContext context) {
+        if (!showSearch) {
+            return;
+        }
+        NekoPlayer player = NekoPlayer.getInstance();
+        int left = searchX;
+        int right = panelX + panelWidth - PADDING;
+        int width = right - left;
+
+        if (System.currentTimeMillis() < volumeNoticeUntilMillis) {
+            String volume = Text.translatable(LANG + "player.volume", Math.round(player.getVolume() * 100.0F))
+                    .getString();
+            context.drawText(textRenderer, textRenderer.trimToWidth(volume, width), left, stripY, COLOR_ACCENT, true);
+            return;
+        }
+        if (player.getStatus() == NekoPlayer.Status.ERROR) {
+            String failed = Text.translatable(LANG + "player.failed", player.getErrorMessage()).getString();
+            context.drawText(textRenderer, textRenderer.trimToWidth(failed, width), left, stripY, COLOR_ERROR, false);
+            return;
+        }
+
+        Track track = player.getTrack();
+        if (track == null) {
+            context.drawText(textRenderer, textRenderer.trimToWidth(
+                    Text.translatable(LANG + "player.tip").getString(), width), left, stripY, COLOR_SUBTITLE, false);
+            return;
+        }
+
+        String time = Track.formatTime(player.getPositionMillis()) + " / " + track.durationLabel();
+        int timeWidth = textRenderer.getWidth(time);
+        String label = (player.isPlaying() ? "▶ " : "❚❚ ") + track.title()
+                + (track.hasArtist() ? " · " + track.artist() : "");
+        context.drawText(textRenderer, textRenderer.trimToWidth(label, width - timeWidth - 6), left, stripY,
+                COLOR_TITLE, false);
+        context.drawText(textRenderer, time, right - timeWidth, stripY, COLOR_SUBTITLE, false);
+
+        // 面板最下沿拉一条进度线，比单独摆个进度条更像 HUD
+        int barY = contentBottom + 3;
+        context.fill(left, barY, right, barY + 2, COLOR_BAR_TRACK);
+        int filled = Math.round(width * player.getProgress());
+        if (filled > 0) {
+            context.fill(left, barY, left + filled, barY + 2, COLOR_ACCENT);
         }
     }
 

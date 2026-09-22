@@ -30,6 +30,11 @@ dependencies {
     // 扫码登录用的二维码编码库（Apache-2.0），随 mod 一起打包（jar-in-jar），玩家无需额外安装
     implementation "com.google.zxing:core:3.5.4"
     include "com.google.zxing:core:3.5.4"
+
+    // 曲库里的无损音源是 FLAC，JDK 自带的 Java Sound 不认，用 jFLAC 解码后仍然交给 Java Sound 播放。
+    // 同样打进 mod 里，玩家不用额外装东西（jFLAC 为 LGPL-2.1，见 README）。
+    implementation("org.jflac:jflac-codec:1.5.2") { exclude group: "junit" }
+    include("org.jflac:jflac-codec:1.5.2") { exclude group: "junit" }
 }
 
 processResources {

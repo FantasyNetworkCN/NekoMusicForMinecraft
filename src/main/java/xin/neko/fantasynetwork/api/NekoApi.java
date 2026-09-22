@@ -6,6 +6,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -44,6 +46,39 @@ public final class NekoApi {
 
     public static CompletableFuture<ApiResponse> post(String path, String token, JsonObject body) {
         return send("POST", path, token, body == null ? new JsonObject() : body);
+    }
+
+    /**
+     * 打开一个二进制资源（音频 / 封面）的响应体，返回的流是「边下边读」的：
+     * 调用方读完必须关掉，否则这条 HTTP 连接不会释放。流只给一个线程读。
+     */
+    public static CompletableFuture<InputStream> openStream(String path) {
+        HttpRequest request = HttpRequest.newBuilder(URI.create(BASE_URL + path))
+                .timeout(REQUEST_TIMEOUT)
+                .header("User-Agent", "NekoMusicForMinecraft")
+                .GET()
+                .build();
+
+        return CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream())
+                .handle((response, error) -> {
+                    if (error != null) {
+                        throw new CompletionException(transportError(error));
+                    }
+                    int status = response.statusCode();
+                    if (status != 200) {
+                        closeQuietly(response.body());
+                        throw new CompletionException(new ApiException(status, "资源下载失败（HTTP " + status + "）"));
+                    }
+                    return response.body();
+                });
+    }
+
+    private static void closeQuietly(InputStream stream) {
+        try {
+            stream.close();
+        } catch (IOException ignored) {
+            // 关了就行，关不掉也没别的办法
+        }
     }
 
     private static CompletableFuture<ApiResponse> send(String method, String path, String token, JsonObject body) {

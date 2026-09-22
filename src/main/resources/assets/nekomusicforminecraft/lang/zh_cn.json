@@ -7,6 +7,8 @@
   "hud.nekomusicforminecraft.idle": "暂无播放",
   "hud.nekomusicforminecraft.hint": "按 K 打开音乐面板",
   "hud.nekomusicforminecraft.logged_in": "已登录：%s",
+  "hud.nekomusicforminecraft.loading": "正在加载…",
+  "hud.nekomusicforminecraft.failed": "播放失败",
   "command.nekomusicforminecraft.help.header": "Neko 云音乐指令：",
   "command.nekomusicforminecraft.help.login": "/nekomusic login - 打开面板扫码登录",
   "command.nekomusicforminecraft.help.logout": "/nekomusic logout - 退出登录",
@@ -45,6 +47,9 @@
   "screen.nekomusicforminecraft.panel.search.empty": "没有找到「%s」",
   "screen.nekomusicforminecraft.panel.search.empty_with_message": "没有找到「%s」：%s",
   "screen.nekomusicforminecraft.panel.search.failed": "搜索失败：%s",
+  "screen.nekomusicforminecraft.panel.player.tip": "点搜索结果就能播，滚轮调音量",
+  "screen.nekomusicforminecraft.panel.player.failed": "播放失败：%s",
+  "screen.nekomusicforminecraft.panel.player.volume": "音量 %s%%",
   "screen.nekomusicforminecraft.qr_login.status.idle": "准备中…",
   "screen.nekomusicforminecraft.qr_login.status.creating": "正在获取二维码…",
   "screen.nekomusicforminecraft.qr_login.status.pending": "等待手机扫码…（%s 秒后过期）",
@@ -52,5 +57,7 @@
   "screen.nekomusicforminecraft.qr_login.status.confirmed": "登录成功，欢迎 %s！",
   "screen.nekomusicforminecraft.qr_login.status.canceled": "已取消登录，正在重新获取二维码…",
   "screen.nekomusicforminecraft.qr_login.status.expired": "二维码已过期，正在重新获取…",
-  "screen.nekomusicforminecraft.qr_login.status.error": "出错了：%s"
+  "screen.nekomusicforminecraft.qr_login.status.error": "出错了：%s",
+  "player.nekomusicforminecraft.error.device": "打不开音频输出设备，可能被别的程序占用了",
+  "player.nekomusicforminecraft.error.format": "不支持的音频格式：%s"
 }
