@@ -11,6 +11,7 @@ base {
 }
 
 repositories {
+    mavenCentral()
     // Add repositories to retrieve artifacts from in here.
     // You should only use this when depending on other mods because
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
@@ -25,6 +26,10 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // 扫码登录用的二维码编码库（Apache-2.0），随 mod 一起打包（jar-in-jar），玩家无需额外安装
+    implementation "com.google.zxing:core:3.5.4"
+    include "com.google.zxing:core:3.5.4"
 }
 
 processResources {
