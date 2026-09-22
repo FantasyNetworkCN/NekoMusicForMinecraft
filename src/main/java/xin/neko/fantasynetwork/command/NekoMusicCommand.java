@@ -1,8 +1,5 @@
 package xin.neko.fantasynetwork.command;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
@@ -13,15 +10,16 @@ import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import xin.neko.fantasynetwork.Main;
+import xin.neko.fantasynetwork.api.MusicSearch;
 import xin.neko.fantasynetwork.api.NekoApi;
 import xin.neko.fantasynetwork.auth.AuthManager;
-import xin.neko.fantasynetwork.auth.QrLoginService;
-import xin.neko.fantasynetwork.ui.QrLoginScreen;
+import xin.neko.fantasynetwork.ui.NekoMusicScreen;
 
 /**
  * 客户端指令 {@code /nekomusic}，所有子指令都在本地执行（不需要服务器装这个 mod）。
  *
- * <p>网络请求一律异步：先回一句「正在处理」，拿到结果再回到主线程补一条消息。
+ * <p>面板本身按 K 就能开、鼠标就能用，这里的指令只是备选入口：习惯敲指令的玩家可以少点几下鼠标。
+ * 网络请求一律异步：先回一句「正在处理」，拿到结果再回到主线程补一条消息。
  */
 public final class NekoMusicCommand {
 
@@ -29,7 +27,7 @@ public final class NekoMusicCommand {
     /** 搜索指令在聊天栏最多列几条结果。 */
     private static final int SEARCH_LIMIT = 5;
 
-    /** 请求打开扫码界面：聊天界面关闭自己之前不能直接切界面，所以只置个标记，下一 tick 再开。 */
+    /** 请求打开面板：聊天界面关闭自己之前不能直接切界面，所以只置个标记，下一 tick 再开。 */
     private static boolean openRequested;
 
     private NekoMusicCommand() {
@@ -43,7 +41,7 @@ public final class NekoMusicCommand {
                             return 1;
                         })
                         .then(ClientCommandManager.literal("login").executes(context -> {
-                            openLogin(context.getSource());
+                            openPanel(context.getSource());
                             return 1;
                         }))
                         .then(ClientCommandManager.literal("logout").executes(context -> {
@@ -64,7 +62,7 @@ public final class NekoMusicCommand {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (openRequested) {
                 openRequested = false;
-                client.setScreen(new QrLoginScreen());
+                client.setScreen(new NekoMusicScreen());
             }
         });
     }
@@ -77,14 +75,12 @@ public final class NekoMusicCommand {
         source.sendFeedback(Text.translatable(PREFIX + "help.search"));
     }
 
-    private static void openLogin(FabricClientCommandSource source) {
+    private static void openPanel(FabricClientCommandSource source) {
         AuthManager auth = AuthManager.getInstance();
         if (auth.isLoggedIn()) {
             source.sendFeedback(Text.translatable(PREFIX + "login.already", auth.displayName()));
-            return;
         }
-        QrLoginService.getInstance().start();
-        // 指令是在聊天界面里执行的，而 ChatScreen 执行完提交的命令后还会把界面置空（setScreen(null)），
+        // ChatScreen 执行完提交的命令后还会把界面置空（setScreen(null)），
         // 这里立刻切界面会被它覆盖掉，所以交给下一 tick 的钩子来开。
         openRequested = true;
         source.sendFeedback(Text.translatable(PREFIX + "login.opening"));
@@ -128,62 +124,28 @@ public final class NekoMusicCommand {
             return;
         }
 
-        JsonObject body = new JsonObject();
-        body.addProperty("query", query);
         source.sendFeedback(Text.translatable(PREFIX + "search.searching", query));
 
         MinecraftClient client = source.getClient();
-        NekoApi.post("/api/music/search", null, body).whenComplete((response, error) -> client.execute(() -> {
-            if (error != null) {
-                source.sendError(Text.translatable(PREFIX + "search.failed", NekoApi.errorMessage(error)));
-                return;
-            }
+        MusicSearch.search(query, client::execute,
+                result -> {
+                    if (result.tracks().isEmpty()) {
+                        String message = result.message();
+                        source.sendFeedback(message.isBlank()
+                                ? Text.translatable(PREFIX + "search.empty", query)
+                                : Text.translatable(PREFIX + "search.empty_with_message", query, message));
+                        return;
+                    }
 
-            JsonArray results = response.array("results");
-            int shown = Math.min(SEARCH_LIMIT, results.size());
-            if (shown == 0) {
-                String message = response.message();
-                source.sendFeedback(message.isBlank()
-                        ? Text.translatable(PREFIX + "search.empty", query)
-                        : Text.translatable(PREFIX + "search.empty_with_message", query, message));
-                return;
-            }
-
-            source.sendFeedback(Text.translatable(PREFIX + "search.header", query).formatted(Formatting.AQUA));
-            for (int index = 0; index < shown; index++) {
-                JsonElement element = results.get(index);
-                if (element == null || !element.isJsonObject()) {
-                    continue;
-                }
-                JsonObject music = element.getAsJsonObject();
-                MutableText line = Text.literal("#" + string(music, "id") + " ").formatted(Formatting.DARK_GRAY)
-                        .append(Text.literal(string(music, "title")).formatted(Formatting.WHITE))
-                        .append(Text.literal(" - " + string(music, "artist")).formatted(Formatting.GRAY))
-                        .append(Text.literal(" " + formatDuration(intValue(music, "duration"))).formatted(Formatting.DARK_GRAY));
-                source.sendFeedback(line);
-            }
-        }));
-    }
-
-    private static String string(JsonObject json, String key) {
-        JsonElement element = json.get(key);
-        return element == null || element.isJsonNull() ? "" : element.getAsString();
-    }
-
-    private static int intValue(JsonObject json, String key) {
-        JsonElement element = json.get(key);
-        if (element == null || !element.isJsonPrimitive()) {
-            return 0;
-        }
-        try {
-            return element.getAsInt();
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    private static String formatDuration(int seconds) {
-        int safe = Math.max(0, seconds);
-        return String.format("%d:%02d", safe / 60, safe % 60);
+                    source.sendFeedback(Text.translatable(PREFIX + "search.header", query).formatted(Formatting.AQUA));
+                    for (MusicSearch.Track track : result.tracks().stream().limit(SEARCH_LIMIT).toList()) {
+                        MutableText line = Text.literal("#" + track.id() + " ").formatted(Formatting.DARK_GRAY)
+                                .append(Text.literal(track.title()).formatted(Formatting.WHITE))
+                                .append(Text.literal(" - " + track.artist()).formatted(Formatting.GRAY))
+                                .append(Text.literal(" " + track.durationLabel()).formatted(Formatting.DARK_GRAY));
+                        source.sendFeedback(line);
+                    }
+                },
+                message -> source.sendError(Text.translatable(PREFIX + "search.failed", message)));
     }
 }

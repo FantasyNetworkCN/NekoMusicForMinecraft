@@ -13,6 +13,7 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import xin.neko.fantasynetwork.Main;
+import xin.neko.fantasynetwork.auth.AuthManager;
 import xin.neko.fantasynetwork.player.NekoPlayer;
 import xin.neko.fantasynetwork.player.Track;
 
@@ -25,7 +26,8 @@ import xin.neko.fantasynetwork.player.Track;
 public final class PlayerHud implements HudElement {
 
     private static final Identifier ELEMENT_ID = Identifier.of(Main.MOD_ID, "player");
-    private static final KeyBinding.Category CATEGORY = KeyBinding.Category.create(Identifier.of(Main.MOD_ID, "main"));
+    /** 按键分类，和打开面板的快捷键共用（同一分类只能创建一次）。 */
+    static final KeyBinding.Category CATEGORY = KeyBinding.Category.create(Identifier.of(Main.MOD_ID, "main"));
 
     /** 距离屏幕左/下边缘的间距。 */
     private static final int MARGIN = 4;
@@ -118,7 +120,8 @@ public final class PlayerHud implements HudElement {
         NekoPlayer player = NekoPlayer.getInstance();
         Track track = player.getTrack();
 
-        boolean showArtist = !compact && track != null && track.hasArtist();
+        // 没歌在放的时候这一行拿来提示怎么打开面板
+        boolean showArtist = !compact && (track == null || track.hasArtist());
         boolean showTimes = !compact;
 
         int textWidth = panelWidth - PADDING * 2 - ACCENT_WIDTH;
@@ -143,7 +146,7 @@ public final class PlayerHud implements HudElement {
         cursorY += rowHeight;
 
         if (showArtist) {
-            context.drawText(font, font.trimToWidth(track.artist(), textWidth), contentX, cursorY, COLOR_SUBTITLE, true);
+            context.drawText(font, font.trimToWidth(subtitle(track), textWidth), contentX, cursorY, COLOR_SUBTITLE, true);
             cursorY += rowHeight;
         }
 
@@ -168,6 +171,17 @@ public final class PlayerHud implements HudElement {
         context.fill(x, y + height - 1, x + width, y + height, COLOR_BORDER);
         context.fill(x + width - 1, y, x + width, y + height, COLOR_BORDER);
         context.fill(x, y, x + ACCENT_WIDTH, y + height, COLOR_ACCENT);
+    }
+
+    /** 歌曲演唱者；没有歌曲时改成登录状态 / 快捷键提示。 */
+    private static String subtitle(Track track) {
+        if (track != null) {
+            return track.artist();
+        }
+        AuthManager auth = AuthManager.getInstance();
+        return auth.isLoggedIn()
+                ? Text.translatable("hud." + Main.MOD_ID + ".logged_in", auth.displayName()).getString()
+                : Text.translatable("hud." + Main.MOD_ID + ".hint").getString();
     }
 
     private static String formatTime(long millis) {
