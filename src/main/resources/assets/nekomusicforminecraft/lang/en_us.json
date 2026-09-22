@@ -1,3 +1,7 @@
 {
-  "nekomusicforminecraft.name": "NekoMusic for Minecraft"
+  "nekomusicforminecraft.name": "NekoMusic for Minecraft",
+  "key.category.nekomusicforminecraft.main": "NekoMusic",
+  "key.nekomusicforminecraft.toggle_hud": "Show/Hide Player",
+  "key.nekomusicforminecraft.play_pause": "Play/Pause",
+  "hud.nekomusicforminecraft.idle": "Nothing playing"
 }

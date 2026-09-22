@@ -1,3 +1,7 @@
 {
-  "nekomusicforminecraft.name": "Neko云音乐 MC 版"
+  "nekomusicforminecraft.name": "Neko云音乐 MC 版",
+  "key.category.nekomusicforminecraft.main": "Neko 云音乐",
+  "key.nekomusicforminecraft.toggle_hud": "显示/隐藏播放器",
+  "key.nekomusicforminecraft.play_pause": "播放/暂停",
+  "hud.nekomusicforminecraft.idle": "暂无播放"
 }
