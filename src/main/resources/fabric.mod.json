@@ -10,22 +10,12 @@
   "icon": "assets/nekomusicforminecraft/icon.png",
   "environment": "*",
   "entrypoints": {
-    "fabric-datagen": [
-      "xin.neko.fantasynetwork.client.NekomusicforminecraftDataGenerator"
-    ],
-    "client": [
-      "xin.neko.fantasynetwork.client.NekomusicforminecraftClient"
-    ],
     "main": [
-      "xin.neko.fantasynetwork.Nekomusicforminecraft"
+      "xin.neko.fantasynetwork.Main"
     ]
   },
   "mixins": [
-    "nekomusicforminecraft.mixins.json",
-    {
-      "config": "nekomusicforminecraft.client.mixins.json",
-      "environment": "client"
-    }
+    "nekomusicforminecraft.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=${loader_version}",
