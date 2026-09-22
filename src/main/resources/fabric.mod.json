@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "nekomusicforminecraft",
+  "version": "${version}",
+  "name": "NekoMusicForMinecraft",
+  "description": "Neko云音乐的MC版本",
+  "authors": [],
+  "contact": {},
+  "license": "AGPL-3.0",
+  "icon": "assets/nekomusicforminecraft/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-datagen": [
+      "xin.neko.fantasynetwork.client.NekomusicforminecraftDataGenerator"
+    ],
+    "client": [
+      "xin.neko.fantasynetwork.client.NekomusicforminecraftClient"
+    ],
+    "main": [
+      "xin.neko.fantasynetwork.Nekomusicforminecraft"
+    ]
+  },
+  "mixins": [
+    "nekomusicforminecraft.mixins.json",
+    {
+      "config": "nekomusicforminecraft.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
