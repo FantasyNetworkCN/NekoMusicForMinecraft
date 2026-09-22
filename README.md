@@ -1,4 +1,4 @@
-# Neko歌姬计划安卓版
+# Neko歌姬计划Minecraft版
 ![](https://count.getloli.com/get/@:NekoMusicMinecraft?theme=moebooru)
 
 > [!TIP]
